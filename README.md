@@ -1,6 +1,9 @@
 # Package
 rsmartsheet
 
+## Installation
+devtools::install_github("elias-jhsph/rsmartsheet", upgrade="default")
+
 ## Type
 Package
 
