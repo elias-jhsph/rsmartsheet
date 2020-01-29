@@ -8,7 +8,7 @@ Package
 R SDK For Smartsheet
 
 ## Version
-0.1.0
+1.0.1
 
 ## Author
 Elias Weston-Farber
