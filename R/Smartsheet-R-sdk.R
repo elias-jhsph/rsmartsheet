@@ -414,9 +414,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
       dplyr::rename(cells=data) %>%
       dplyr::mutate(id=exisiting_rows)))
     httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_send), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
-    return()
-  }
-  if(length(exisiting_rows) < nrow(data_to_send)){
+  }else if(length(exisiting_rows) < nrow(data_to_send)){
     print("replace_sheet_with_csv: adding new rows")
     data_to_send <- suppressWarnings(suppressMessages(data_to_send %>%
       dplyr::mutate(id =dplyr::row_number()) %>%
@@ -435,9 +433,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
       dplyr::slice(length(exisiting_rows):nrow(data_to_send)) %>%
       dplyr::mutate(toBottom=TRUE)
     httr::POST(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_add), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
-    return()
-  }
-  if(length(exisiting_rows) > nrow(data_to_send) & never_delete==FALSE){
+  } else if(length(exisiting_rows) > nrow(data_to_send) & never_delete==FALSE){
     print("replace_sheet_with_csv: deleteing some extra rows")
     data_to_send <- suppressWarnings(suppressMessages(data_to_send %>%
       dplyr::mutate(id =dplyr::row_number()) %>%
@@ -449,9 +445,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
       dplyr::mutate(id=head(exisiting_rows,length(cells)))))
     httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_send), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
     httr::DELETE(url=paste0("https://api.smartsheet.com/2.0/sheets/",id,'/rows?ignoreRowsNotFound=true&ids=',paste(tail(exisiting_rows,length(exisiting_rows)-nrow(data_to_send)),collapse=",")), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
-    return()
-  }
-  if(length(exisiting_rows) > nrow(data_to_send) & never_delete){
+  } else if(length(exisiting_rows) > nrow(data_to_send) & never_delete){
     stop("ERROR replace_sheet_with_csv: csv has fewer rows than sheet requiring some rows to be deleted,\n set never_delete to FALSE and try again.")
   }
 }
