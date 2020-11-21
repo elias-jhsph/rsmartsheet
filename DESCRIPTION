@@ -8,8 +8,12 @@ Description: This is an R package that takes advantage of httr to interface with
     It can be used to download smartsheets and attachments to smartsheets as well as other functions.
 Imports:
     jsonlite, 
-    httr
-License:  MIT + file LICENSE
+    httr,
+    readr,
+    dplyr,
+    purrr,
+    tidyr
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.0.2
+RoxygenNote: 7.1.1
