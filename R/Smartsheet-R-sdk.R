@@ -408,7 +408,8 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
     data_to_send <- suppressWarnings(suppressMessages(data_to_send %>%
       dplyr::mutate(id =dplyr::row_number()) %>%
       tidyr::pivot_longer(!id, names_to = "columnId",values_to="value") %>%
-      dplyr:: mutate(columnId=unlist(unname(column_dict[columnId]))) %>%
+      dplyr::mutate(value=replace_na(value,"")) %>%
+      dplyr::mutate(columnId=unlist(unname(column_dict[columnId]))) %>%
       dplyr::group_split(id, keep=FALSE) %>%
       purrr::map_df(tidyr::nest) %>%
       dplyr::rename(cells=data) %>%
@@ -419,6 +420,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
     data_to_send <- suppressWarnings(suppressMessages(data_to_send %>%
       dplyr::mutate(id =dplyr::row_number()) %>%
       tidyr::pivot_longer(!id, names_to = "columnId",values_to="value") %>%
+      dplyr::mutate(value=replace_na(value,"")) %>%
       dplyr::mutate(columnId=unlist(unname(column_dict[columnId]))) %>%
       dplyr::group_split(id, keep=FALSE) %>%
       purrr::map_df(tidyr::nest) %>%
@@ -438,6 +440,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
     data_to_send <- suppressWarnings(suppressMessages(data_to_send %>%
       dplyr::mutate(id =dplyr::row_number()) %>%
       tidyr::pivot_longer(!id, names_to = "columnId",values_to="value") %>%
+      dplyr::mutate(value=replace_na(value,"")) %>%
       dplyr::mutate(columnId=unlist(unname(column_dict[columnId]))) %>%
       dplyr::group_split(id, keep=FALSE) %>%
       purrr::map_df(tidyr::nest) %>%
