@@ -20,7 +20,8 @@ pkg.globals$working_folder_id <- "NONE"
 #' set_smartsheet_api_key("yourAPIkey")
 #' }
 set_smartsheet_api_key <- function(key) {
-  r <- httr::GET("https://api.smartsheet.com/2.0/folders/411795358803844/folders", httr::add_headers('Authorization' = paste('Bearer',key, sep = ' ')))
+  r <- httr::GET("https://api.smartsheet.com/2.0/folders/411795358803844/folders",
+                 httr::add_headers('Authorization' = paste('Bearer',key, sep = ' ')))
   if(grepl("errorCode",httr::content(r, "text"))){
     stop("Smartsheet Error: Your API key was invalid.")
   }
@@ -48,7 +49,8 @@ set_smart_working_folder <- function(folder_id) {
   if(pkg.globals$api_key == "NONE"){
     stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
   }
-  r <- httr::GET(paste("https://api.smartsheet.com/2.0/folders/",folder_id,"/folders",sep=""), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+  r <- httr::GET(paste("https://api.smartsheet.com/2.0/folders/",folder_id,"/folders",sep=""),
+                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   if(grepl("errorCode",httr::content(r, "text"))){
     stop("Smartsheet Error: Your folder_id was invalid.")
   }
@@ -74,9 +76,11 @@ get_smart_folder_id<-function(folder_name){
     stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
   }
   if(pkg.globals$working_folder_id == "NONE"){
-    r <- httr::GET("https://api.smartsheet.com/2.0/home/folders/", httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+    r <- httr::GET("https://api.smartsheet.com/2.0/home/folders/",
+                   httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   } else{
-    r <- httr::GET(paste("https://api.smartsheet.com/2.0/folders/",pkg.globals$working_folder_id,sep=""), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+    r <- httr::GET(paste("https://api.smartsheet.com/2.0/folders/",pkg.globals$working_folder_id,sep=""),
+                   httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   }
   folders_listed <- jsonlite::fromJSON(httr::content(r, "text"))
   if(sum(folders_listed$data['name'] == folder_name)>1){
@@ -111,7 +115,8 @@ csv_to_sheet_in_folder<-function(file_path, folder_id){
   if(pkg.globals$api_key == "NONE"){
     stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
   }
-  return(httr::POST(url=paste("https://api.smartsheet.com/2.0/folders",folder_id,'sheets',paste('import?sheetName=',substr(basename(file_path),0,str_length(basename(file_path))-4),'&headerRowIndex=0&primaryColumnIndex=0',sep=''),sep='/'), body=upload_file(file_path), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'text/csv', 'Content-Disposition'='attachment')))
+  return(httr::POST(url=paste("https://api.smartsheet.com/2.0/folders",folder_id,'sheets',paste('import?sheetName=',substr(basename(file_path),0,str_length(basename(file_path))-4),'&headerRowIndex=0&primaryColumnIndex=0',sep=''),sep='/'),
+                    body=upload_file(file_path), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'text/csv', 'Content-Disposition'='attachment')))
 }
 
 
@@ -134,7 +139,8 @@ delete_sheet_by_name<-function(sheet_name){
   if(pkg.globals$api_key == "NONE"){
     stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
   }
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true", httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
+                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
   if(sum(sheets_listed$data['name'] == sheet_name)>1){
     stop("rsmartsheet Error: More than 1 sheet found with that name")
@@ -143,7 +149,8 @@ delete_sheet_by_name<-function(sheet_name){
     stop("rsmartsheet Error: No sheet found with that name")
   }
   id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
-  return(httr::DELETE(paste("https://api.smartsheet.com/2.0/sheets",id,sep='/'), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))))
+  return(httr::DELETE(paste("https://api.smartsheet.com/2.0/sheets",id,sep='/'),
+                      httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))))
 }
 
 
@@ -166,7 +173,8 @@ get_sheet_as_csv<-function(sheet_name){
   if(pkg.globals$api_key == "NONE"){
     stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
   }
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true", httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
+                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
   if(sum(sheets_listed$data['name'] == sheet_name)>1){
     stop("rsmartsheet Error: More than 1 sheet found with that name")
@@ -175,7 +183,8 @@ get_sheet_as_csv<-function(sheet_name){
     stop("rsmartsheet Error: No sheet found with that name")
   }
   id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
-  return(httr::content(httr::GET(paste("https://api.smartsheet.com/2.0/sheets",id,sep='/'), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Accept' = 'text/csv')), "text"))
+  return(httr::content(httr::GET(paste("https://api.smartsheet.com/2.0/sheets",id,sep='/'),
+                                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Accept' = 'text/csv')), "text"))
 }
 
 
@@ -199,7 +208,8 @@ get_sheet_csv_attachment<-function(sheet_name, attachments_name){
   if(pkg.globals$api_key == "NONE"){
     stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
   }
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true", httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
+                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
   if(sum(sheets_listed$data['name'] == sheet_name)>1){
     stop("rsmartsheet Error: More than 1 sheet found with that name")
@@ -208,7 +218,8 @@ get_sheet_csv_attachment<-function(sheet_name, attachments_name){
     stop("rsmartsheet Error: No sheet found with that name")
   }
   id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
-  attachments_listed <- jsonlite::fromJSON(httr::content(httr::GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',sep='/'), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
+  attachments_listed <- jsonlite::fromJSON(httr::content(httr::GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',sep='/'),
+                                                                   httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
   if(sum(attachments_listed$data['name'] == attachments_name)>1){
     stop("rsmartsheet Error: More than 1 attachment found with that name")
   }
@@ -216,7 +227,8 @@ get_sheet_csv_attachment<-function(sheet_name, attachments_name){
     stop("rsmartsheet Error: No attahment found with that name")
   }
   aid <- toString(attachments_listed$data$id[attachments_listed$data$name == attachments_name])
-  attached <- jsonlite::fromJSON(httr::content(httr::GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',aid,sep='/'), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
+  attached <- jsonlite::fromJSON(httr::content(httr::GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',aid,sep='/'),
+                                                         httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
   return(httr::content(httr::GET(attached$url),'text'))
 }
 
@@ -246,7 +258,8 @@ download_sheet_attachment<-function(sheet_name, file_path, attachments_name=""){
   if(attachments_name==""){
     attachments_name <- basename(file_path)
   }
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true", httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
+                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
   if(sum(sheets_listed$data['name'] == sheet_name)>1){
     stop("rsmartsheet Error: More than 1 sheet found with that name")
@@ -255,7 +268,8 @@ download_sheet_attachment<-function(sheet_name, file_path, attachments_name=""){
     stop("rsmartsheet Error: No sheet found with that name")
   }
   id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
-  attachments_listed <- jsonlite::fromJSON(httr::content(GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',sep='/'), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
+  attachments_listed <- jsonlite::fromJSON(httr::content(GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',sep='/'),
+                                                             httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
   if(sum(attachments_listed$data['name'] == attachments_name)>1){
     stop("rsmartsheet Error: More than 1 attachment found with that name")
   }
@@ -263,7 +277,8 @@ download_sheet_attachment<-function(sheet_name, file_path, attachments_name=""){
     stop("rsmartsheet Error: No attahment found with that name")
   }
   aid <- toString(attachments_listed$data$id[attachments_listed$data$name == attachments_name])
-  attached <- jsonlite::fromJSON(httr::content(GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',aid,sep='/'), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
+  attached <- jsonlite::fromJSON(httr::content(GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',aid,sep='/'),
+                                                   httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
   return(httr::GET(attached$url, write_disk(file_path, overwrite=TRUE)))
 }
 
@@ -285,7 +300,8 @@ list_sheets<-function(){
   if(pkg.globals$api_key == "NONE"){
     stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
   }
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true", httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
+                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
   return(sheets_listed)
 }
@@ -315,7 +331,8 @@ replace_sheet_attachment<-function(sheet_name, file_path, attachment_name){
   if(basename(file_path)!=attachment_name){
     stop("rsmartsheet Error: upload file_path basename must equal attachment_name")
   }
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true", httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
+                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
   if(sum(sheets_listed$data['name'] == sheet_name)>1){
     stop("rsmartsheet Error: More than 1 sheet found with that name")
@@ -324,7 +341,8 @@ replace_sheet_attachment<-function(sheet_name, file_path, attachment_name){
     stop("rsmartsheet Error: No sheet found with that name")
   }
   id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
-  attachments_listed <- jsonlite::fromJSON(httr::content(GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',sep='/'), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
+  attachments_listed <- jsonlite::fromJSON(httr::content(GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',sep='/'),
+                                                             httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
   if(sum(attachments_listed$data['name'] == attachment_name)>1){
     stop("rsmartsheet Error: More than 1 attachment found with that name")
   }
@@ -332,8 +350,11 @@ replace_sheet_attachment<-function(sheet_name, file_path, attachment_name){
     stop("rsmartsheet Error: No attahment found with that name")
   }
   aid <- toString(attachments_listed$data$id[attachments_listed$data$name == attachment_name])
-  attached <- httr::DELETE(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',aid,sep='/'), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
-  return(httr::POST(url=paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',sep='/'), body=upload_file(file_path), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'text/csv', 'Content-Disposition'=paste('attachment; filename="',attachment_name,'"',sep=''))))
+  attached <- httr::DELETE(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',aid,sep='/'),
+                           httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+  return(httr::POST(url=paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',sep='/'),
+                    body=upload_file(file_path), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '),
+                                                                   'Content-Type' = 'text/csv', 'Content-Disposition'=paste('attachment; filename="',attachment_name,'"',sep=''))))
 }
 
 
@@ -361,7 +382,8 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
     stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
   }
   # Find sheet by name
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true", httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
+                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
   if(sum(sheets_listed$data['name'] == sheet_name)>1){
     stop("rsmartsheet Error: More than 1 sheet found with that name")
@@ -378,12 +400,9 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
   }
 
   # Download existing sheet data
-  sheet_data <- jsonlite::fromJSON(httr::content(httr::GET(paste0("https://api.smartsheet.com/2.0/sheets/",id,"?level=2&include=objectValue"), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"), bigint_as_char=TRUE)
-  # Fix ID columns to character
-  sheet_data$columns['id'] <- as.character(sheet_data$columns$id)
-  if(!is.null(sheet_data$rows$id)){
-    sheet_data$rows['id'] <- as.character(sheet_data$rows$id)
-  }
+  sheet_data <- jsonlite::fromJSON(str_replace_all(str_replace_all(httr::content(httr::GET(paste0("https://api.smartsheet.com/2.0/sheets/",id,"?level=2&include=objectValue"),
+                                                                           httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"),
+                                                   '"id":([0-9]+)','"id":"\\1"')'"columnId":([0-9]+)','"columnId":"\\1"'), bigint_as_char=TRUE)
 
   # make column dictionary
   column_dict <- list()
@@ -391,6 +410,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
     column_dict[sheet_data$columns$title[i]] <- sheet_data$columns$id[i]
   }
 
+  # in case their are no rows we want an empty vector for exisiting_rows not null
   exisiting_rows <- sheet_data$rows$id
   if(is.null(sheet_data$rows$id)){
     exisiting_rows <- vector()
@@ -409,27 +429,29 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
       dplyr::mutate(id =dplyr::row_number()) %>%
       tidyr::pivot_longer(!id, names_to = "columnId",values_to="value") %>%
       dplyr::mutate(value=tidyr::replace_na(value,"")) %>%
-      dplyr::mutate(columnId=unlist(unname(column_dict[columnId]))) %>%
+      dplyr::mutate(columnId=as.character(unlist(unname(column_dict[columnId])))) %>%
       dplyr::group_split(id, keep=FALSE) %>%
       purrr::map_df(tidyr::nest) %>%
       dplyr::rename(cells=data) %>%
-      dplyr::mutate(id=exisiting_rows)))
-    return(httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_send), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json')))
+      dplyr::mutate(id=as.character(exisiting_rows))))
+    return(httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_send),
+                     httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json')))
   }else if(length(exisiting_rows) < nrow(data_to_send)){
     print("replace_sheet_with_csv: adding new rows")
     data_to_send <- suppressWarnings(suppressMessages(data_to_send %>%
       dplyr::mutate(id =dplyr::row_number()) %>%
       tidyr::pivot_longer(!id, names_to = "columnId",values_to="value") %>%
       dplyr::mutate(value=tidyr::replace_na(value,"")) %>%
-      dplyr::mutate(columnId=unlist(unname(column_dict[columnId]))) %>%
+      dplyr::mutate(columnId=as.character(unlist(unname(column_dict[columnId])))) %>%
       dplyr::group_split(id, keep=FALSE) %>%
       purrr::map_df(tidyr::nest) %>%
       dplyr::rename(cells=data)))
     if(length(exisiting_rows)>0){
       data_to_update <- data_to_send %>%
         dplyr::slice(1:length(exisiting_rows)) %>%
-        dplyr::mutate(id=exisiting_rows)
-      r1 <- httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_update), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
+        dplyr::mutate(id=as.character(exisiting_rows))
+      r1 <- httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_update),
+                      httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
       if(grepl("errorCode",httr::content(r1, "text"))){
         print(jsonlite::fromJSON(httr::content(r1, "text")))
         stop("Smartsheet Error: update row phase failed so skipping add row phase")
@@ -438,7 +460,8 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
     data_to_add <- data_to_send %>%
       dplyr::slice(length(exisiting_rows):nrow(data_to_send)) %>%
       dplyr::mutate(toBottom=TRUE)
-    r2 <- httr::POST(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_add), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
+    r2 <- httr::POST(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_add),
+                     httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
     return(list(response_one=r1,response_two=r2))
   } else if(length(exisiting_rows) > nrow(data_to_send) & never_delete==FALSE){
     print("replace_sheet_with_csv: deleteing some extra rows")
@@ -446,17 +469,20 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
       dplyr::mutate(id =dplyr::row_number()) %>%
       tidyr::pivot_longer(!id, names_to = "columnId",values_to="value") %>%
       dplyr::mutate(value=tidyr::replace_na(value,"")) %>%
-      dplyr::mutate(columnId=unlist(unname(column_dict[columnId]))) %>%
+      dplyr::mutate(columnId=as.character(unlist(unname(column_dict[columnId])))) %>%
       dplyr::group_split(id, keep=FALSE) %>%
       purrr::map_df(tidyr::nest) %>%
       dplyr::rename(cells=data) %>%
-      dplyr::mutate(id=head(exisiting_rows,length(cells)))))
-    r1 <- httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_send), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
+      dplyr::mutate(id=as.character(head(exisiting_rows,length(cells))))))
+    r1 <- httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_send),
+                    httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
     if(grepl("errorCode",httr::content(r1, "text"))){
       print(jsonlite::fromJSON(httr::content(r1, "text")))
       stop("Smartsheet Error: update row phase failed so skipping delete row phase")
     }
-    r2 <- httr::DELETE(url=paste0("https://api.smartsheet.com/2.0/sheets/",id,'/rows?ignoreRowsNotFound=true&ids=',paste(tail(exisiting_rows,length(exisiting_rows)-nrow(data_to_send)),collapse=",")), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+    r2 <- httr::DELETE(url=paste0("https://api.smartsheet.com/2.0/sheets/",id,'/rows?ignoreRowsNotFound=true&ids=',
+                                  paste(tail(exisiting_rows,length(exisiting_rows)-nrow(data_to_send)),collapse=",")),
+                       httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
     return(list(response_one=r1,response_two=r2))
   } else if(length(exisiting_rows) > nrow(data_to_send) & never_delete){
     stop("ERROR replace_sheet_with_csv: csv has fewer rows than sheet requiring some rows to be deleted,\n set never_delete to FALSE and try again.")
