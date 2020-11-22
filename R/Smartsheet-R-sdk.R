@@ -402,7 +402,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE){
   # Download existing sheet data
   sheet_data <- jsonlite::fromJSON(str_replace_all(str_replace_all(httr::content(httr::GET(paste0("https://api.smartsheet.com/2.0/sheets/",id,"?level=2&include=objectValue"),
                                                                            httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"),
-                                                   '"id":([0-9]+)','"id":"\\1"')'"columnId":([0-9]+)','"columnId":"\\1"'), bigint_as_char=TRUE)
+                                                   '"id":([0-9]+)','"id":"\\1"'),'"columnId":([0-9]+)','"columnId":"\\1"'), bigint_as_char=TRUE)
 
   # make column dictionary
   column_dict <- list()
