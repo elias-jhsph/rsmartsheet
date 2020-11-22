@@ -12,7 +12,8 @@ Imports:
     readr,
     dplyr,
     purrr,
-    tidyr
+    tidyr,
+    stringr
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

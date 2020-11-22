@@ -4,7 +4,12 @@
 \alias{replace_sheet_with_csv}
 \title{Replace an existing Smartsheet with a new file}
 \usage{
-replace_sheet_with_csv(sheet_name, file_path, never_delete = FALSE)
+replace_sheet_with_csv(
+  sheet_name,
+  file_path,
+  never_delete = FALSE,
+  batch_size = 5000
+)
 }
 \arguments{
 \item{sheet_name}{the target Smartsheet's exact sheet name}
