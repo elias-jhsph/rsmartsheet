@@ -504,8 +504,11 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
       }
       responses_add[paste0("r",i)] <- list(r)
       setTxtProgressBar(pb, i)
+    } if(length(exisiting_rows)>0){
+      return(list(response_update=responses_update,response_add=responses_add))
+    } else{
+      return(list(response_add=responses_add))
     }
-    return(list(response_update=responses_update,response_add=responses_add))
   } else if(length(exisiting_rows) > nrow(data_to_send) & never_delete==FALSE){
     print("replace_sheet_with_csv: deleteing some extra rows")
     data_to_send <- suppressWarnings(suppressMessages(data_to_send %>%
