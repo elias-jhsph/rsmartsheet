@@ -419,7 +419,9 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
   # Check if columns match
   if(length(setdiff(colnames(data_to_send),sheet_data$columns$title))>0 |
      length(setdiff(sheet_data$columns$title,colnames(data_to_send)))>0){
-    stop("Columns are not exactly the same between csv and target sheet")
+    stop(paste("Columns are not exactly the same between csv and target sheet:",
+               paste(setdiff(colnames(data_to_send),sheet_data$columns$title),collpase=", "),
+               paste(setdiff(sheet_data$columns$title,colnames(data_to_send)),collpase=", ")))
   }
 
   make_indexes <- function(size){
