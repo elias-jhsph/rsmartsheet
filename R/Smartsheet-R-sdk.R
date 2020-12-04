@@ -510,29 +510,33 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
       return(list(response_add=responses_add))
     }
   } else if(length(exisiting_rows) > nrow(data_to_send) & never_delete==FALSE){
-    print("replace_sheet_with_csv: deleteing some extra rows")
-    data_to_send <- suppressWarnings(suppressMessages(data_to_send %>%
-      dplyr::mutate(id =dplyr::row_number()) %>%
-      tidyr::pivot_longer(!id, names_to = "columnId",values_to="value") %>%
-      dplyr::mutate(value=tidyr::replace_na(value,"")) %>%
-      dplyr::mutate(columnId=as.character(unlist(unname(column_dict[columnId])))) %>%
-      dplyr::group_split(id, keep=FALSE) %>%
-      purrr::map_df(tidyr::nest) %>%
-      dplyr::rename(cells=data) %>%
-      dplyr::mutate(id=as.character(head(exisiting_rows,length(cells))))))
-    responses_add <- list()
-    indexes <- make_indexes(nrow(data_to_send))
-    pb <- txtProgressBar(0, indexes$size, style = 3)
-    for(i in seq(1:indexes$size)){
-      r <- httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_send %>% dplyr::slice(indexes$low[[i]]:indexes$high[[i]])),
-                     httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
-      if(grepl("errorCode",httr::content(r, "text"))){
-        print(paste("In chunk:",i))
-        print(jsonlite::fromJSON(httr::content(r, "text")))
-        stop("Smartsheet Error: update row phase failed so skipping delete row phase")
+    if (nrow(data_to_send)>0){
+      print("replace_sheet_with_csv: deleteing some extra rows")
+      data_to_send <- suppressWarnings(suppressMessages(data_to_send %>%
+        dplyr::mutate(id =dplyr::row_number()) %>%
+        tidyr::pivot_longer(!id, names_to = "columnId",values_to="value") %>%
+        dplyr::mutate(value=tidyr::replace_na(value,"")) %>%
+        dplyr::mutate(columnId=as.character(unlist(unname(column_dict[columnId])))) %>%
+        dplyr::group_split(id, keep=FALSE) %>%
+        purrr::map_df(tidyr::nest) %>%
+        dplyr::rename(cells=data) %>%
+        dplyr::mutate(id=as.character(head(exisiting_rows,length(cells))))))
+      responses_add <- list()
+      indexes <- make_indexes(nrow(data_to_send))
+      pb <- txtProgressBar(0, indexes$size, style = 3)
+      for(i in seq(1:indexes$size)){
+        r <- httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_send %>% dplyr::slice(indexes$low[[i]]:indexes$high[[i]])),
+                       httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
+        if(grepl("errorCode",httr::content(r, "text"))){
+          print(paste("In chunk:",i))
+          print(jsonlite::fromJSON(httr::content(r, "text")))
+          stop("Smartsheet Error: update row phase failed so skipping delete row phase")
+        }
+        responses_add[paste0("r",i)] <- list(r)
+        setTxtProgressBar(pb, i)
       }
-      responses_add[paste0("r",i)] <- list(r)
-      setTxtProgressBar(pb, i)
+    } else{
+      print("replace_sheet_with_csv: deleteing all extra rows")
     }
     delete_rows <- tail(exisiting_rows,length(exisiting_rows)-nrow(data_to_send))
     indexes <- make_indexes(length(delete_rows))
