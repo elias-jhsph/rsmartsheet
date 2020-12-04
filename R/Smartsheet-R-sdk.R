@@ -504,7 +504,8 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
       }
       responses_add[paste0("r",i)] <- list(r)
       setTxtProgressBar(pb, i)
-    } if(length(exisiting_rows)>0){
+    } 
+    if(length(exisiting_rows)>0){
       return(list(response_update=responses_update,response_add=responses_add))
     } else{
       return(list(response_add=responses_add))
