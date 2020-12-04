@@ -434,6 +434,10 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
 
   # print mode
   if(length(exisiting_rows) == nrow(data_to_send)){
+    if(nrow(data_to_send)==0){
+      print("replace_sheet_with_csv: perfect replacement 0 rows in both")
+      return()
+    }
     print("replace_sheet_with_csv: perfect replacement")
     data_to_send <- suppressWarnings(suppressMessages(data_to_send %>%
       dplyr::mutate(id =dplyr::row_number()) %>%
@@ -504,7 +508,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
       }
       responses_add[paste0("r",i)] <- list(r)
       setTxtProgressBar(pb, i)
-    } 
+    }
     if(length(exisiting_rows)>0){
       return(list(response_update=responses_update,response_add=responses_add))
     } else{
@@ -538,6 +542,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
       }
     } else{
       print("replace_sheet_with_csv: deleteing all extra rows")
+      responses_add <- list()
     }
     delete_rows <- tail(exisiting_rows,length(exisiting_rows)-nrow(data_to_send))
     indexes <- make_indexes(length(delete_rows))
