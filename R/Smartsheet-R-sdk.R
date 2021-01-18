@@ -564,3 +564,151 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
     stop("ERROR replace_sheet_with_csv: csv has fewer rows than sheet requiring some rows to be deleted,\n set never_delete to FALSE and try again.")
   }
 }
+
+
+
+
+#' Colorize Smartsheet
+#'
+#' @description For a sheet with a column HEX_COLOR that sheet will be updated
+#' (via a full replacement) so that those row have those colors and then the HEX_COLOR
+#' column will be removed
+#'
+#' @param sheet_name the target Smartsheet's exact sheet name
+#' @param clean_hex_col defaults to TRUE and removes HEX_COLOR column when complete
+#'
+#' @return returns nothing
+#' @export
+#'
+#' @import magrittr
+#'
+#' @examples
+#' \dontrun{
+#' colorize_sheet("sheet_name")
+#' }
+colorize_sheet<-function(sheet_name, clean_hex_col=TRUE, batch_size=5000){
+  if(pkg.globalspi_key == "NONE"){
+    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
+  }
+  existing <- readr::read_csv(get_sheet_as_csv(sheet_name))
+  if(!"HEX_COLOR" %in% colnames(existing)){
+    stop("rsmartsheet Error: can't colorize without column 'HEX_COLOR'")
+  }
+  if(length(unique(stringr::str_length(existing$HEX_COLOR[is.na(existing$HEX_COLOR)==FALSE])))>1 &
+     unique(stringr::str_length(existing$HEX_COLOR[is.na(existing$HEX_COLOR)==FALSE]))[1] == 9){
+    stop("rsmartsheet Error: can't colorize with 'HEX_COLOR' column that has lengths other than 9 (starting with #) or NA")
+  }
+  palette <- c("#000000", "#FFFFFF", NA, "#FFEBEE", "#FFF3DF", "#FFFEE6", "#E7F5E9", "#E2F2FE", "#F4E4F5", "#F2E8DE", "#FFCCD2",
+               "#FFE1AF", "#FEFF85", "#C6E7C8", "#B9DDFC", "#EBC7EF", "#EEDCCA", "#E5E5E5", "#F87E7D", "#FFCD7A", "#FEFF00", "#7ED085", "#5FB3F9",
+               "#D190DA", "#D0AF8F", "#BDBDBD", "#EA352E", "#FF8D00", "#FFED00", "#40B14B", "#1061C3", "#9210AD", "#974C00", "#757575", "#991310",
+               "#EA5000", "#EBC700", "#237F2E", "#0B347D", "#61058B", "#592C00")
+
+  incolors <- unique(existing$HEX_COLOR[is.na(existing$HEX_COLOR)==FALSE])
+
+  best_match <- list()
+  dist_match <- list()
+  for (color in incolors){
+    best <- 10000000
+    index <- 3
+    for(pal in palette){
+      target <- grDevices::col2rgb(color)
+      test <- grDevices::col2rgb(pal)
+      dist <- sqrt(((target[1]-test[1])^2)+((target[2]-test[2])^2)+((target[2]-test[2])^2))
+      if(dist < best){
+        index <- match(pal,palette)
+        best <- dist
+      }
+    }
+    best_match[color] <- index
+    dist_match[color] <- best
+  }
+
+  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
+                 httr::add_headers('Authorization' = paste('Bearer',pkg.globalspi_key, sep = ' ')))
+  sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
+  if(sum(sheets_listed$data['name'] == sheet_name)>1){
+    stop("rsmartsheet Error: More than 1 sheet found with that name")
+  }
+  if(sum(sheets_listed$data['name'] == sheet_name)==0){
+    stop("rsmartsheet Error: No sheet found with that name")
+  }
+  id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
+
+  # Load in new data from csv to send
+  data_to_send <- existing
+  # Download existing sheet data
+  sheet_data <- jsonlite::fromJSON(stringr::str_replace_all(stringr::str_replace_all(httr::content(httr::GET(paste0("https://api.smartsheet.com/2.0/sheets/",id,"?level=2&include=objectValue"),
+                                                                                                             httr::add_headers('Authorization' = paste('Bearer',pkg.globalspi_key, sep = ' '))), "text"),
+                                                                                     '"id":([0-9]+)','"id":"\\1"'),'"columnId":([0-9]+)','"columnId":"\\1"'), bigint_as_char=TRUE)
+
+  # make column dictionary
+  column_dict <- list()
+  for (i in seq(1:nrow(sheet_data$columns))){
+    column_dict[sheet_data$columns$title[i]] <- sheet_data$columns$id[i]
+  }
+
+  # in case their are no rows we want an empty vector for exisiting_rows not null
+  exisiting_rows <- sheet_data$rows$id
+  if(is.null(sheet_data$rows$id)){
+    exisiting_rows <- vector()
+  }
+
+  # Check if columns match
+  if(length(setdiff(colnames(data_to_send),sheet_data$columns$title))>0 |
+     length(setdiff(sheet_data$columns$title,colnames(data_to_send)))>0){
+    stop(paste("Columns are not exactly the same between csv and target sheet:",
+               paste(setdiff(colnames(data_to_send),sheet_data$columns$title),collpase=", "),
+               paste(setdiff(sheet_data$columns$title,colnames(data_to_send)),collpase=", ")))
+  }
+
+  make_indexes <- function(size){
+    test <- seq(1:size)
+    max <- batch_size
+    y <- seq_along(test)
+    chunks <- split(test, ceiling(y/max))
+    return(list(low=lapply(chunks,min),high=lapply(chunks,max),size=length(chunks)))
+  }
+
+  # print mode
+  if(length(exisiting_rows) == nrow(data_to_send)){
+    if(nrow(data_to_send)==0){
+      print("replace_sheet_with_csv: perfect replacement 0 rows in both")
+      return()
+    }
+    print("replace_sheet_with_csv: perfect replacement")
+    data_to_send <- suppressWarnings(suppressMessages(data_to_send %>%
+                                                        dplyr::mutate(id =dplyr::row_number()) %>%
+                                                        tidyr::pivot_longer(-all_of(c("id","HEX_COLOR")), names_to = "columnId",values_to="value") %>%
+                                                        dplyr::mutate(value=tidyr::replace_na(value,"")) %>%
+                                                        dplyr::mutate(columnId=as.character(unlist(unname(column_dict[columnId])))) %>%
+                                                        dplyr::mutate(format=paste0(",,,,,,,,,",
+                                                                                    ifelse(is.na(HEX_COLOR),"0",as.character(best_match[HEX_COLOR]))
+                                                                                    ,",,,,,,,")) %>%
+                                                        dplyr::select(-HEX_COLOR) %>%
+                                                        dplyr::group_split(id, keep=FALSE) %>%
+                                                        purrr::map_df(tidyr::nest) %>%
+                                                        dplyr::rename(cells=data) %>%
+                                                        dplyr::mutate(id=as.character(exisiting_rows))))
+    responses <- list()
+    indexes <- make_indexes(nrow(data_to_send))
+    pb <- txtProgressBar(0, indexes$size, style = 3)
+    for(i in seq(1:indexes$size)){
+      r <- httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_send %>% dplyr::slice(indexes$low[[i]]:indexes$high[[i]])),
+                     httr::add_headers('Authorization' = paste('Bearer',pkg.globalspi_key, sep = ' '), 'Content-Type' = 'application/json'))
+      if(grepl("errorCode",httr::content(r, "text"))){
+        print(paste("In chunk:",i))
+        print(jsonlite::fromJSON(httr::content(r, "text")))
+        stop("Smartsheet Error: add row phase failed")
+      }
+      responses[paste0("r",i)] <- list(r)
+      setTxtProgressBar(pb, i)
+    }
+    if(clean_hex_col){
+      r <- httr::DELETE(url=paste("https://api.smartsheet.com/2.0/sheets",id,'columns',column_dict$HEX_COLOR,sep='/'),
+                        httr::add_headers('Authorization' = paste('Bearer',pkg.globalspi_key, sep = ' '), 'Content-Type' = 'application/json'))
+    }
+    return(responses)
+  } else {
+    stop("ERROR replace_sheet_with_csv: was changed during the operation - aborting!")
+  }
+}
