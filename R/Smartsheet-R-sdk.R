@@ -587,7 +587,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
 #' colorize_sheet("sheet_name")
 #' }
 colorize_sheet<-function(sheet_name, clean_hex_col=TRUE, batch_size=5000){
-  if(pkg.globalspi_key == "NONE"){
+  if(pkg.globals$api_key == "NONE"){
     stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
   }
   existing <- readr::read_csv(get_sheet_as_csv(sheet_name))
@@ -624,7 +624,7 @@ colorize_sheet<-function(sheet_name, clean_hex_col=TRUE, batch_size=5000){
   }
 
   r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
-                 httr::add_headers('Authorization' = paste('Bearer',pkg.globalspi_key, sep = ' ')))
+                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
   if(sum(sheets_listed$data['name'] == sheet_name)>1){
     stop("rsmartsheet Error: More than 1 sheet found with that name")
@@ -638,7 +638,7 @@ colorize_sheet<-function(sheet_name, clean_hex_col=TRUE, batch_size=5000){
   data_to_send <- existing
   # Download existing sheet data
   sheet_data <- jsonlite::fromJSON(stringr::str_replace_all(stringr::str_replace_all(httr::content(httr::GET(paste0("https://api.smartsheet.com/2.0/sheets/",id,"?level=2&include=objectValue"),
-                                                                                                             httr::add_headers('Authorization' = paste('Bearer',pkg.globalspi_key, sep = ' '))), "text"),
+                                                                                                             httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"),
                                                                                      '"id":([0-9]+)','"id":"\\1"'),'"columnId":([0-9]+)','"columnId":"\\1"'), bigint_as_char=TRUE)
 
   # make column dictionary
@@ -694,7 +694,7 @@ colorize_sheet<-function(sheet_name, clean_hex_col=TRUE, batch_size=5000){
     pb <- txtProgressBar(0, indexes$size, style = 3)
     for(i in seq(1:indexes$size)){
       r <- httr::PUT(url=paste("https://api.smartsheet.com/2.0/sheets",id,'rows',sep='/'), body=jsonlite::toJSON(data_to_send %>% dplyr::slice(indexes$low[[i]]:indexes$high[[i]])),
-                     httr::add_headers('Authorization' = paste('Bearer',pkg.globalspi_key, sep = ' '), 'Content-Type' = 'application/json'))
+                     httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
       if(grepl("errorCode",httr::content(r, "text"))){
         print(paste("In chunk:",i))
         print(jsonlite::fromJSON(httr::content(r, "text")))
@@ -705,7 +705,7 @@ colorize_sheet<-function(sheet_name, clean_hex_col=TRUE, batch_size=5000){
     }
     if(clean_hex_col){
       r <- httr::DELETE(url=paste("https://api.smartsheet.com/2.0/sheets",id,'columns',column_dict$HEX_COLOR,sep='/'),
-                        httr::add_headers('Authorization' = paste('Bearer',pkg.globalspi_key, sep = ' '), 'Content-Type' = 'application/json'))
+                        httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'application/json'))
     }
     return(responses)
   } else {
