@@ -115,7 +115,7 @@ csv_to_sheet_in_folder<-function(file_path, folder_id){
   if(pkg.globals$api_key == "NONE"){
     stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
   }
-  return(httr::POST(url=paste("https://api.smartsheet.com/2.0/folders",folder_id,'sheets',paste('import?sheetName=',substr(basename(file_path),0,str_length(basename(file_path))-4),'&headerRowIndex=0&primaryColumnIndex=0',sep=''),sep='/'),
+  return(httr::POST(url=paste("https://api.smartsheet.com/2.0/folders",folder_id,'sheets',paste('import?sheetName=',substr(basename(file_path),0,stringr::str_length(basename(file_path))-4),'&headerRowIndex=0&primaryColumnIndex=0',sep=''),sep='/'),
                     body=upload_file(file_path), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'text/csv', 'Content-Disposition'='attachment')))
 }
 
