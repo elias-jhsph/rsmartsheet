@@ -613,7 +613,7 @@ colorize_sheet<-function(sheet_name, clean_hex_col=TRUE, batch_size=5000){
     for(pal in palette){
       target <- grDevices::col2rgb(color)
       test <- grDevices::col2rgb(pal)
-      dist <- sqrt(((target[1]-test[1])^2)+((target[2]-test[2])^2)+((target[2]-test[2])^2))
+      dist <- sqrt(((target[1]-test[1])^2)+((target[2]-test[2])^2)+((target[3]-test[3])^2))
       if(dist < best){
         index <- match(pal,palette)
         best <- dist
