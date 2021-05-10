@@ -4,7 +4,7 @@
 \alias{csv_to_sheet_in_folder}
 \title{Create New Smartsheet in Folder with Specific ID}
 \usage{
-csv_to_sheet_in_folder(file_path, folder_id)
+csv_to_sheet_in_folder(file_path, folder_id, all_text_number = FALSE)
 }
 \arguments{
 \item{file_path}{a path which locates the csv and provides the name}

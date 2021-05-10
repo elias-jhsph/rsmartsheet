@@ -2,6 +2,7 @@ pkg.globals <- new.env()
 
 pkg.globals$api_key <- "NONE"
 pkg.globals$working_folder_id <- "NONE"
+pkg.globals$allow_ids <- FALSE
 
 
 
@@ -23,12 +24,47 @@ set_smartsheet_api_key <- function(key) {
   r <- httr::GET("https://api.smartsheet.com/2.0/folders/411795358803844/folders",
                  httr::add_headers('Authorization' = paste('Bearer',key, sep = ' ')))
   if(grepl("errorCode",httr::content(r, "text"))){
-    stop("Smartsheet Error: Your API key was invalid.")
+    stop("rmartsheet Error: Your API key was invalid.")
   }
   pkg.globals$api_key <- key
 }
 
 
+
+#' Check Smartsheet API Key
+#'
+#' @return if this function works it returns nothing
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' check_smartsheet_api_key()
+#' }
+check_smartsheet_api_key <- function() {
+  if(pkg.globals$api_key == "NONE"){
+    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
+  }
+}
+
+
+
+
+#' Set whether you can use direct sheet id
+#'
+#' @description Set whether you can use direct sheet id references instead of sheet names
+#'
+#' @param inp logical TRUE or FALSE
+#'
+#' @return returns nothing
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' use_direct_ids()
+#' }
+use_direct_ids <- function(inp) {
+  pkg.globals$allow_ids <- as.logical(inp)
+}
 
 
 
@@ -46,13 +82,13 @@ set_smartsheet_api_key <- function(key) {
 #' set_smart_working_folder(123456789)
 #' }
 set_smart_working_folder <- function(folder_id) {
-  if(pkg.globals$api_key == "NONE"){
-    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
-  }
+
+  check_smartsheet_api_key()
+
   r <- httr::GET(paste("https://api.smartsheet.com/2.0/folders/",folder_id,"/folders",sep=""),
                  httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   if(grepl("errorCode",httr::content(r, "text"))){
-    stop("Smartsheet Error: Your folder_id was invalid.")
+    stop("rmartsheet Error: Your folder_id was invalid.")
   }
   pkg.globals$working_folder_id <- paste(folder_id,"/folders/",sep="")
 }
@@ -72,9 +108,9 @@ set_smart_working_folder <- function(folder_id) {
 #' get_smart_folder_id("Folder_Name")
 #' }
 get_smart_folder_id<-function(folder_name){
-  if(pkg.globals$api_key == "NONE"){
-    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
-  }
+
+  check_smartsheet_api_key()
+
   if(pkg.globals$working_folder_id == "NONE"){
     r <- httr::GET("https://api.smartsheet.com/2.0/home/folders/",
                    httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
@@ -111,15 +147,171 @@ get_smart_folder_id<-function(folder_name){
 #' csv_to_sheet_in_folder("a_folder/maybe_another_folder/sheet_name.csv", 123456789)
 #' csv_to_sheet_in_folder("a_folder/maybe_another_folder/sheet_name.csv", "123456789")
 #' }
-csv_to_sheet_in_folder<-function(file_path, folder_id){
-  if(pkg.globals$api_key == "NONE"){
-    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
+csv_to_sheet_in_folder<-function(file_path, folder_id, all_text_number=FALSE){
+
+  check_smartsheet_api_key()
+
+  if(!stringr::str_detect(basename(file_path),"\\.csv$")){
+    stop("rmartsheet Error: target file is not a .csv file")
   }
-  return(httr::POST(url=paste("https://api.smartsheet.com/2.0/folders",folder_id,'sheets',paste('import?sheetName=',substr(basename(file_path),0,stringr::str_length(basename(file_path))-4),'&headerRowIndex=0&primaryColumnIndex=0',sep=''),sep='/'),
-                    body=httr::upload_file(file_path), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'text/csv', 'Content-Disposition'='attachment')))
+
+  sheet_name <- stringr::str_remove(basename(file_path),"\\.csv$")
+
+  r <- httr::POST(url=paste("https://api.smartsheet.com/2.0/folders",folder_id,'sheets',paste('import?sheetName=',sheet_name,'&headerRowIndex=0&primaryColumnIndex=0',sep=''),sep='/'),
+                    body=httr::upload_file(file_path), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'text/csv', 'Content-Disposition'='attachment'))
+  if(all_text_number){
+    if(grepl("errorCode",httr::content(r, "text"))){
+     print(jsonlite::fromJSON(httr::content(r, "text")))
+     stop("rmartsheet Error: could not make sheet in the first place so aborting column type asssignment to TEXT_NUMBER")
+    }
+    set_sheet_columns_to_textnumber(sheet_name)
+  }
+  return(r)
 }
 
 
+
+
+#' Create New Smartsheet
+#'
+#' @param file_path a path which locates the csv and provides the name
+#'
+#' @return returns nothing
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' csv_to_sheet("a_folder/maybe_another_folder/sheet_name.csv", 123456789)
+#' csv_to_sheet("a_folder/maybe_another_folder/sheet_name.csv", "123456789")
+#' }
+csv_to_sheet<-function(file_path, all_text_number=FALSE){
+
+  check_smartsheet_api_key()
+
+  if(!stringr::str_detect(basename(file_path),"\\.csv$")){
+    stop("rmartsheet Error: target file is not a .csv file")
+  }
+
+  sheet_name <- stringr::str_remove(basename(file_path),"\\.csv$")
+  if(pkg.globals$working_folder_id == "NONE"){
+    r <- httr::POST(url=paste("https://api.smartsheet.com/2.0/sheets",paste('import?sheetName=',sheet_name,'&headerRowIndex=0&primaryColumnIndex=0',sep=''),sep='/'),
+                      body=httr::upload_file(file_path), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'text/csv', 'Content-Disposition'='attachment'))
+  } else{
+    r <- httr::POST(url=paste("https://api.smartsheet.com/2.0/folders",pkg.globals$working_folder_id,'sheets',paste('import?sheetName=',sheet_name,'&headerRowIndex=0&primaryColumnIndex=0',sep=''),sep='/'),
+                      body=httr::upload_file(file_path), httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Content-Type' = 'text/csv', 'Content-Disposition'='attachment'))
+  }
+  if(all_text_number){
+    if(grepl("errorCode",httr::content(r, "text"))){
+      print(jsonlite::fromJSON(httr::content(r, "text")))
+      stop("rmartsheet Error: could not make sheet in the first place so aborting column type asssignment to TEXT_NUMBER")
+    }
+    set_sheet_columns_to_textnumber(sheet_name)
+  }
+  return(r)
+}
+
+
+
+
+#' Get Sheet Column Info
+#'
+#' @param sheet_name name of smartsheet
+#'
+#' @return returns table of column info
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' get_sheet_column_info("sheet_name")
+#' }
+get_sheet_column_info<-function(sheet_name){
+
+  check_smartsheet_api_key()
+
+  id <- sheet_name_to_id(sheet_name)
+
+  r <- httr::GET(paste0("https://api.smartsheet.com/2.0/sheets/",id,"/columns"),
+                      httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+
+  return(jsonlite::fromJSON(httr::content(r, "text"))$data)
+}
+
+
+
+
+#' Set Sheet Columns to Text Number Types
+#'
+#' @param sheet_name name of smartsheet
+#'
+#' @return returns nothing
+#' @export
+#'
+#' @import magrittr
+#'
+#' @examples
+#' \dontrun{
+#' set_sheet_columns_to_textnumber("sheet_name")
+#' }
+set_sheet_columns_to_textnumber<-function(sheet_name){
+
+  check_smartsheet_api_key()
+
+  id <- sheet_name_to_id(sheet_name)
+
+  col_data <- get_sheet_column_info(sheet_name)
+
+  target_columns <- col_data %>% dplyr::filter(type!="TEXT_NUMBER") %>% dplyr::pull(id) %>% as.character()
+
+  for (col in target_columns){
+    r <- httr::PUT(paste0("https://api.smartsheet.com/2.0/sheets/",id,"/columns/",col),
+                   httr::add_headers('Authorization' = paste('Bearer',smartkey, sep = ' ')), body='{"type": "TEXT_NUMBER"}')
+    if(grepl("errorCode",httr::content(r, "text"))){
+      print(paste("Column type update had error on column name:",target_columns[target_columns$id==col]$title))
+      print(jsonlite::fromJSON(httr::content(r, "text")))
+      stop("rmartsheet Error: column type update terminated early")
+    }
+  }
+}
+
+
+
+
+#' Get Smartsheet Name From ID
+#'
+#' @param sheet_name the name of a smartsheet
+#'s
+#' @return returns sheet ID
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' sheet_name_to_id("sheet_name")
+#' }
+sheet_name_to_id<-function(sheet_name){
+
+  if(!stringr::str_detect(sheet_name,"[A-Z]|[a-z]")){
+    if(pkg.globals$allow_ids){
+      return(sheet_name)
+    } else{
+      print("rsmartsheet Warning: It looks like you passed a sheet ID not a sheet name. Call use_direct_ids(TRUE) at the begining of your session to allow direct reference of sheets by ID")
+      warning("rsmartsheet Warning: It looks like you passed a sheet ID not a sheet name.\nCall use_direct_ids(TRUE) at the begining of your session to allow direct reference of sheets by ID")
+    }
+  }
+
+  check_smartsheet_api_key()
+
+  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
+                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
+  sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
+  if(sum(sheets_listed$data['name'] == sheet_name)>1){
+    stop("rsmartsheet Error: More than 1 sheet found with that name")
+  }
+  if(sum(sheets_listed$data['name'] == sheet_name)==0){
+    stop("rsmartsheet Error: No sheet found with that name")
+  }
+  id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
+  return(id)
+}
 
 
 
@@ -136,19 +328,11 @@ csv_to_sheet_in_folder<-function(file_path, folder_id){
 #' delete_sheet_by_name("sheet_name")
 #' }
 delete_sheet_by_name<-function(sheet_name){
-  if(pkg.globals$api_key == "NONE"){
-    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
-  }
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
-                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
-  sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
-  if(sum(sheets_listed$data['name'] == sheet_name)>1){
-    stop("rsmartsheet Error: More than 1 sheet found with that name")
-  }
-  if(sum(sheets_listed$data['name'] == sheet_name)==0){
-    stop("rsmartsheet Error: No sheet found with that name")
-  }
-  id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
+
+  check_smartsheet_api_key()
+
+  id <- sheet_name_to_id(sheet_name)
+
   return(httr::DELETE(paste("https://api.smartsheet.com/2.0/sheets",id,sep='/'),
                       httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))))
 }
@@ -170,19 +354,10 @@ delete_sheet_by_name<-function(sheet_name){
 #' get_sheet_as_csv("sheet_name")
 #' }
 get_sheet_as_csv<-function(sheet_name){
-  if(pkg.globals$api_key == "NONE"){
-    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
-  }
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
-                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
-  sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
-  if(sum(sheets_listed$data['name'] == sheet_name)>1){
-    stop("rsmartsheet Error: More than 1 sheet found with that name")
-  }
-  if(sum(sheets_listed$data['name'] == sheet_name)==0){
-    stop("rsmartsheet Error: No sheet found with that name")
-  }
-  id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
+
+  check_smartsheet_api_key()
+
+  id <- sheet_name_to_id(sheet_name)
   return(httr::content(httr::GET(paste("https://api.smartsheet.com/2.0/sheets",id,sep='/'),
                                  httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '), 'Accept' = 'text/csv')), "text"))
 }
@@ -205,19 +380,10 @@ get_sheet_as_csv<-function(sheet_name){
 #' get_sheet_as_csv("sheet_name", "atttachment.csv")
 #' }
 get_sheet_csv_attachment<-function(sheet_name, attachments_name){
-  if(pkg.globals$api_key == "NONE"){
-    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
-  }
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
-                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
-  sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
-  if(sum(sheets_listed$data['name'] == sheet_name)>1){
-    stop("rsmartsheet Error: More than 1 sheet found with that name")
-  }
-  if(sum(sheets_listed$data['name'] == sheet_name)==0){
-    stop("rsmartsheet Error: No sheet found with that name")
-  }
-  id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
+
+  check_smartsheet_api_key()
+
+  id <- sheet_name_to_id(sheet_name)
   attachments_listed <- jsonlite::fromJSON(httr::content(httr::GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',sep='/'),
                                                                    httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
   if(sum(attachments_listed$data['name'] == attachments_name)>1){
@@ -252,22 +418,13 @@ get_sheet_csv_attachment<-function(sheet_name, attachments_name){
 #' download_sheet_attachment("sheet_name","a_folder/maybe_another_folder/sheet_name.csv", file_name="different_sheet_name")
 #' }
 download_sheet_attachment<-function(sheet_name, file_path, attachments_name=""){
-  if(pkg.globals$api_key == "NONE"){
-    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
-  }
+
+  check_smartsheet_api_key()
+
   if(attachments_name==""){
     attachments_name <- basename(file_path)
   }
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
-                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
-  sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
-  if(sum(sheets_listed$data['name'] == sheet_name)>1){
-    stop("rsmartsheet Error: More than 1 sheet found with that name")
-  }
-  if(sum(sheets_listed$data['name'] == sheet_name)==0){
-    stop("rsmartsheet Error: No sheet found with that name")
-  }
-  id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
+  id <- sheet_name_to_id(sheet_name)
   attachments_listed <- jsonlite::fromJSON(httr::content(GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',sep='/'),
                                                              httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
   if(sum(attachments_listed$data['name'] == attachments_name)>1){
@@ -297,9 +454,9 @@ download_sheet_attachment<-function(sheet_name, file_path, attachments_name=""){
 #' list_sheets()
 #' }
 list_sheets<-function(){
-  if(pkg.globals$api_key == "NONE"){
-    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
-  }
+
+  check_smartsheet_api_key()
+
   r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
                  httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
   sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
@@ -325,22 +482,13 @@ list_sheets<-function(){
 #' replace_sheet_attachment("sheet_name","a_folder/maybe_another_folder/attachment_name.csv", "other_attachment_name.csv")
 #' }
 replace_sheet_attachment<-function(sheet_name, file_path, attachment_name){
-  if(pkg.globals$api_key == "NONE"){
-    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
-  }
+
+  check_smartsheet_api_key()
+
   if(basename(file_path)!=attachment_name){
     stop("rsmartsheet Error: upload file_path basename must equal attachment_name")
   }
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
-                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
-  sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
-  if(sum(sheets_listed$data['name'] == sheet_name)>1){
-    stop("rsmartsheet Error: More than 1 sheet found with that name")
-  }
-  if(sum(sheets_listed$data['name'] == sheet_name)==0){
-    stop("rsmartsheet Error: No sheet found with that name")
-  }
-  id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
+  id <- sheet_name_to_id(sheet_name)
   attachments_listed <- jsonlite::fromJSON(httr::content(GET(paste("https://api.smartsheet.com/2.0/sheets",id,'attachments',sep='/'),
                                                              httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' '))), "text"))
   if(sum(attachments_listed$data['name'] == attachment_name)>1){
@@ -378,20 +526,11 @@ replace_sheet_attachment<-function(sheet_name, file_path, attachment_name){
 #' replace_sheet_with_csv("sheet_name","a_folder/maybe_another_folder/sheet.csv")
 #' }
 replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batch_size=5000){
-  if(pkg.globals$api_key == "NONE"){
-    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
-  }
-  # Find sheet by name
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
-                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
-  sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
-  if(sum(sheets_listed$data['name'] == sheet_name)>1){
-    stop("rsmartsheet Error: More than 1 sheet found with that name")
-  }
-  if(sum(sheets_listed$data['name'] == sheet_name)==0){
-    stop("rsmartsheet Error: No sheet found with that name")
-  }
-  id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
+
+  check_smartsheet_api_key()
+
+    # Find sheet by name
+  id <- sheet_name_to_id(sheet_name)
 
   # Load in new data from csv to send
   data_to_send <- try(suppressWarnings(suppressMessages(readr::read_csv(file_path, col_types = readr::cols(.default = readr::col_character())))))
@@ -457,7 +596,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
       if(grepl("errorCode",httr::content(r, "text"))){
         print(paste("In chunk:",i))
         print(jsonlite::fromJSON(httr::content(r, "text")))
-        stop("Smartsheet Error: add row phase failed")
+        stop("rmartsheet Error: add row phase failed")
       }
       responses[paste0("r",i)] <- list(r)
       setTxtProgressBar(pb, i)
@@ -486,7 +625,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
         if(grepl("errorCode",httr::content(r, "text"))){
           print(paste("In chunk:",i))
           print(jsonlite::fromJSON(httr::content(r, "text")))
-          stop("Smartsheet Error: update row phase failed so skipping add row phase")
+          stop("rmartsheet Error: update row phase failed so skipping add row phase")
         }
         responses_update[paste0("r",i)] <- list(r)
         setTxtProgressBar(pb, i)
@@ -504,7 +643,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
       if(grepl("errorCode",httr::content(r, "text"))){
         print(paste("In chunk:",i))
         print(jsonlite::fromJSON(httr::content(r, "text")))
-        stop("Smartsheet Error: add row phase failed")
+        stop("rmartsheet Error: add row phase failed")
       }
       responses_add[paste0("r",i)] <- list(r)
       setTxtProgressBar(pb, i)
@@ -535,7 +674,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
         if(grepl("errorCode",httr::content(r, "text"))){
           print(paste("In chunk:",i))
           print(jsonlite::fromJSON(httr::content(r, "text")))
-          stop("Smartsheet Error: update row phase failed so skipping delete row phase")
+          stop("rmartsheet Error: update row phase failed so skipping delete row phase")
         }
         responses_add[paste0("r",i)] <- list(r)
         setTxtProgressBar(pb, i)
@@ -554,7 +693,7 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
       if(grepl("errorCode",httr::content(r, "text"))){
         print(paste("In chunk:",i))
         print(jsonlite::fromJSON(httr::content(r, "text")))
-        stop("Smartsheet Error: delete row phase failed")
+        stop("rmartsheet Error: delete row phase failed")
       }
       responses_delete[paste0("r",i)] <- list(r)
       setTxtProgressBar(pb, i)
@@ -587,9 +726,9 @@ replace_sheet_with_csv<-function(sheet_name, file_path, never_delete=FALSE, batc
 #' colorize_sheet("sheet_name")
 #' }
 colorize_sheet<-function(sheet_name, clean_hex_col=TRUE, batch_size=5000){
-  if(pkg.globals$api_key == "NONE"){
-    stop("rsmartsheet Error: Please set your api key with set_smartsheet_api_key() to use this function.")
-  }
+
+  check_smartsheet_api_key()
+
   existing <- readr::read_csv(get_sheet_as_csv(sheet_name))
   if(!"HEX_COLOR" %in% colnames(existing)){
     stop("rsmartsheet Error: can't colorize without column 'HEX_COLOR'")
@@ -623,16 +762,7 @@ colorize_sheet<-function(sheet_name, clean_hex_col=TRUE, batch_size=5000){
     dist_match[color] <- best
   }
 
-  r <- httr::GET("https://api.smartsheet.com/2.0/sheets?&includeAll=true",
-                 httr::add_headers('Authorization' = paste('Bearer',pkg.globals$api_key, sep = ' ')))
-  sheets_listed <- jsonlite::fromJSON(httr::content(r, "text"))
-  if(sum(sheets_listed$data['name'] == sheet_name)>1){
-    stop("rsmartsheet Error: More than 1 sheet found with that name")
-  }
-  if(sum(sheets_listed$data['name'] == sheet_name)==0){
-    stop("rsmartsheet Error: No sheet found with that name")
-  }
-  id <- toString(sheets_listed$data$id[sheets_listed$data$name == sheet_name])
+  id <- sheet_name_to_id(sheet_name)
 
   # Load in new data from csv to send
   data_to_send <- existing
@@ -698,7 +828,7 @@ colorize_sheet<-function(sheet_name, clean_hex_col=TRUE, batch_size=5000){
       if(grepl("errorCode",httr::content(r, "text"))){
         print(paste("In chunk:",i))
         print(jsonlite::fromJSON(httr::content(r, "text")))
-        stop("Smartsheet Error: add row phase failed")
+        stop("rmartsheet Error: add row phase failed")
       }
       responses[paste0("r",i)] <- list(r)
       setTxtProgressBar(pb, i)
