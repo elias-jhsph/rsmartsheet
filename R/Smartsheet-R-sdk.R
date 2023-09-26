@@ -444,7 +444,7 @@ download_sheet_attachment<-function(sheet_name, file_path, attachments_name=""){
 
 
 
-#' Download a file of an existing attachment on a Smartsheet with a specific sheet name
+#' Get a list of sheets that the user is able to access
 #'
 #' @return returns table of smartsheets
 #' @export
