@@ -463,7 +463,97 @@ list_sheets<-function(){
   return(sheets_listed)
 }
 
+#' Get a list of workspaces that the user is able to access
+#'
+#' @return A tibble of worksheets that the user is able to access.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' list_workbooks()
+#' }
+list_workspaces <- function() {
+  check_smartsheet_api_key()
+  r <- httr::GET('https://api.smartsheet.com/2.0/workspaces',
+                 httr::add_headers(
+                   Authorization = paste("Bearer",
+                                         rsmartsheet:::pkg.globals$api_key,
+                                         sep = " ")))
+  return(tibble::as_tibble(jsonlite::fromJSON(httr::content(r, "text"))$data))
+}
 
+#' Get a list of reports that the user is able to access
+#'
+#' @return A tibble of reports that the user is able to access.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' list_reports()
+#' }
+list_reports <- function() {
+  check_smartsheet_api_key()
+  "https://api.smartsheet.com/2.0/reports" |>
+    httr::GET(httr::add_headers(Authorization = paste("Bearer",
+                                                      rsmartsheet:::pkg.globals$api_key,
+                                                      sep = " ")
+    ),
+    query = list(includeAll = 'true', accessApiLevel = "ADMIN")
+    ) |>
+    httr::content('text') |>
+    jsonlite::fromJSON() |>
+    pluck('data') |>
+    dplyr::as_tibble()
+};
+
+#' Get a list of dashboards that the user is able to access
+#'
+#' @return A tibble of dashboards that the user is able to access.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' list_dashboards()
+#' }
+list_dashboards <- function() {
+  check_smartsheet_api_key()
+  "https://api.smartsheet.com/2.0/sights" |>
+    httr::GET(httr::add_headers(Authorization = paste("Bearer",
+                                                      rsmartsheet:::pkg.globals$api_key,
+                                                      sep = " ")
+    ),
+    query = list(includeAll = 'true', accessApiLevel = "ADMIN")
+    ) |>
+    httr::content('text') |>
+    jsonlite::fromJSON() |>
+    purrr::pluck('data') |>
+    dplyr::as_tibble()
+}
+
+
+#' Get the history of a cell
+#'
+#' @param sheet_name The name of the sheet with your cell
+#' @param rowId      The ID of the row with your cell. You can find this by
+#'   right-clicking the row and selecting Properties
+#' @param columnId   The ID of the column with your row. Can be found
+#'   with [get_sheet_column_info()].
+#'
+#' @return returns a tibble with the cell's history
+#' @export
+cell_history <- function(sheet_name, rowId, columnId) {
+  check_smartsheet_api_key()
+  sheetId <- sheet_name_to_id(sheet_name)
+  r <- httr::GET(
+    stringr::str_glue('https://api.smartsheet.com/2.0/sheets/{sheetId}/rows/{rowId}/columns/{columnId}/history?include=columnType'),
+    httr::add_headers(Authorization = paste("Bearer",
+                                            rsmartsheet:::pkg.globals$api_key,
+                                            sep = " ")
+    )
+  )
+  # return(r)
+  return(dplyr::as_tibble(jsonlite::fromJSON(httr::content(r, "text"))$data))
+};
 
 
 
